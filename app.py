@@ -1,17 +1,13 @@
-# app.py - Complete Ad Server with Auto Click
+# shorturl_server.py - Short URL Generator with Copy Button
 
-from flask import Flask, request, render_template_string, redirect, jsonify
+from flask import Flask, request, render_template_string, redirect
 import random
 import string
 import json
 import os
-import time
-from datetime import datetime
 
 app = Flask(__name__)
-
-# ======================= CONFIG =======================
-DB_FILE = "links.json"
+DB_FILE = "urls.json"
 
 def load_db():
     if os.path.exists(DB_FILE):
@@ -21,105 +17,237 @@ def load_db():
 
 def save_db(db):
     with open(DB_FILE, 'w') as f:
-        json.dump(db, f)
+        json.dump(db, f, indent=4)
 
-def gen_code():
+def generate_code():
     return ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(6))
 
-# ======================= HTML TEMPLATE =======================
-MAIN_TEMPLATE = """
+# ======================= MAIN PAGE - Create Short URL =======================
+HOME_PAGE = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Link Unlocker - Complete Ad View to Continue</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Short URL Generator</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            width: 90%;
+            max-width: 550px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .sub {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        input {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            transition: 0.3s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.3s;
+        }
+        button:hover {
+            transform: scale(1.02);
+        }
+        .result-box {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 10px;
+            display: none;
+        }
+        .short-url {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 18px;
+            color: #667eea;
+            word-break: break-all;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+        }
+        .copy-btn {
+            background: #28a745;
+            margin-top: 0;
+        }
+        .copy-btn:hover {
+            background: #218838;
+        }
+        .info {
+            font-size: 12px;
+            color: #888;
+            margin-top: 15px;
+        }
+        .footer {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 Short URL Generator</h1>
+        <p class="sub">Paste your long URL and get a short link</p>
         
-        body { 
+        <form id="urlForm">
+            <input type="url" id="longUrl" placeholder="https://example.com/your-very-long-url" required>
+            <button type="submit">✨ Generate Short URL</button>
+        </form>
+        
+        <div class="result-box" id="resultBox">
+            <p style="margin-bottom: 10px;">✅ Your Short URL:</p>
+            <div class="short-url" id="shortUrl"></div>
+            <button class="copy-btn" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+            <p class="info">⚠️ Copy this link and open in browser to visit the destination</p>
+        </div>
+        
+        <div class="footer">
+            Powered by ShortURL
+        </div>
+    </div>
+    
+    <script>
+        const form = document.getElementById('urlForm');
+        const longUrlInput = document.getElementById('longUrl');
+        const resultBox = document.getElementById('resultBox');
+        const shortUrlSpan = document.getElementById('shortUrl');
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const longUrl = longUrlInput.value.trim();
+            if (!longUrl) {
+                alert('Please enter a URL');
+                return;
+            }
+            
+            const response = await fetch('/api/shorten', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: longUrl })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                shortUrlSpan.textContent = data.short_url;
+                resultBox.style.display = 'block';
+                longUrlInput.value = '';
+            } else {
+                alert('Error: ' + data.error);
+            }
+        });
+        
+        function copyToClipboard() {
+            const url = shortUrlSpan.textContent;
+            navigator.clipboard.writeText(url).then(() => {
+                alert('✅ URL copied to clipboard!');
+            }).catch(() => {
+                alert('❌ Failed to copy');
+            });
+        }
+    </script>
+</body>
+</html>
+"""
+
+# ======================= AD PAGE (When user opens short URL) =======================
+AD_PAGE = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Please Wait</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
             background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 100%);
-            color: #fff; 
-            font-family: 'Segoe UI', Arial, sans-serif; 
+            font-family: 'Segoe UI', Arial, sans-serif;
             min-height: 100vh;
         }
-        
         .container { max-width: 800px; margin: 0 auto; padding: 20px; }
-        
-        /* Header */
-        .header { 
-            background: linear-gradient(135deg, #00ff9d, #00bfff);
-            padding: 20px; 
-            border-radius: 15px; 
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .header h1 { color: #000; margin-bottom: 5px; }
-        .header p { color: #000; opacity: 0.8; }
         
         /* Timer Box */
         .timer-box {
             background: rgba(0,0,0,0.5);
             border-radius: 15px;
-            padding: 30px;
+            padding: 40px;
             text-align: center;
-            margin-bottom: 20px;
+            margin: 20px 0;
             border: 2px solid #00ff9d;
         }
         .timer {
-            font-size: 64px;
+            font-size: 80px;
             font-weight: bold;
             color: #00ff9d;
             font-family: monospace;
         }
-        .timer-label {
-            font-size: 14px;
-            color: #888;
-            margin-top: 10px;
-        }
         
-        /* Ad Banner Section */
-        .ad-banner {
-            background: rgba(255,255,255,0.05);
-            border-radius: 10px;
-            padding: 15px;
-            margin: 15px 0;
-            text-align: center;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .ad-label {
-            font-size: 11px;
-            color: #666;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-        
-        /* Scroll Section (hidden initially) */
-        .scroll-section {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 1s ease-out;
+        /* Large Banner */
+        .large-banner {
+            background: #111133;
+            border-radius: 15px;
+            padding: 10px;
             margin: 20px 0;
-        }
-        .scroll-section.show {
-            max-height: 500px;
-        }
-        .scroll-content {
-            background: rgba(0,0,0,0.3);
-            border-radius: 10px;
-            padding: 20px;
             text-align: center;
+            border: 1px solid #00ff9d33;
         }
-        .scroll-hint {
-            color: #ffcc00;
-            animation: bounce 1s infinite;
+        .small-banner {
+            background: #111133;
+            border-radius: 10px;
+            padding: 8px;
+            margin: 10px 0;
+            text-align: center;
+            border: 1px solid #ff660033;
+        }
+        .banner-label {
+            font-size: 10px;
+            color: #666;
+            margin-bottom: 5px;
         }
         
-        /* Download Button */
-        .download-btn {
-            background: linear-gradient(135deg, #ff0088, #6600ff);
-            color: white;
+        /* Next Button */
+        .next-btn {
+            background: linear-gradient(135deg, #00ff9d, #00bfff);
+            color: #000;
             border: none;
             padding: 18px 40px;
             font-size: 20px;
@@ -127,422 +255,236 @@ MAIN_TEMPLATE = """
             border-radius: 50px;
             cursor: pointer;
             width: 100%;
-            margin: 10px 0;
-            transition: transform 0.3s;
-        }
-        .download-btn:hover {
-            transform: scale(1.02);
-        }
-        .download-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        /* Auto Click Banner (hidden) */
-        .auto-click-banner {
+            margin: 20px 0;
             display: none;
         }
-        
-        /* Info Section */
-        .info-section {
-            background: rgba(0,0,0,0.3);
-            border-radius: 10px;
-            padding: 15px;
-            margin: 20px 0;
-            font-size: 12px;
-            color: #888;
-            text-align: center;
+        .next-btn:hover {
+            transform: scale(1.02);
         }
         
-        /* Footer */
         .footer {
             text-align: center;
             padding: 20px;
             color: #555;
             font-size: 12px;
-            border-top: 1px solid rgba(255,255,255,0.1);
-            margin-top: 20px;
-        }
-        .footer a { color: #00bfff; text-decoration: none; }
-        
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
         }
     </style>
 </head>
 <body>
-
-<div class="container">
-    <div class="header">
-        <h1>🔗 LINK UNLOCKER</h1>
-        <p>Complete the steps below to get your link</p>
-    </div>
-    
-    <!-- Timer Box -->
-    <div class="timer-box">
-        <div class="timer" id="timer">10</div>
-        <div class="timer-label">Seconds remaining</div>
-    </div>
-    
-    <!-- Ad Banner 1 - Top -->
-    <div class="ad-banner">
-        <div class="ad-label">ADVERTISEMENT</div>
-        <script>
-            atOptions = {
-                'key' : '9ae6bef8d83530cbbb39510089116235',
-                'format' : 'iframe',
-                'height' : 50,
-                'width' : 320,
-                'params' : {}
-            };
-        </script>
-        <script src="https://www.highperformanceformat.com/9ae6bef8d83530cbbb39510089116235/invoke.js"></script>
-    </div>
-    
-    <!-- Popup Ad Script -->
-    <script src="https://pl29414129.profitablecpmratenetwork.com/30/49/df/3049df26bdcf4b8606a8d79ca7b71bde.js"></script>
-    
-    <!-- Scroll Section (appears after timer) -->
-    <div class="scroll-section" id="scrollSection">
-        <div class="scroll-content">
-            <p class="scroll-hint">👇 <strong>SCROLL DOWN</strong> to continue 👇</p>
-            <p style="margin: 10px 0; font-size: 14px;">Continue scrolling to unlock the button</p>
-            <div class="progress" style="height: 4px; background: #333; border-radius: 2px; margin: 10px 0;">
-                <div id="scrollProgress" style="width: 0%; height: 100%; background: #00ff9d; border-radius: 2px;"></div>
-            </div>
+    <div class="container">
+        <!-- Timer -->
+        <div class="timer-box">
+            <div class="timer" id="timer">10</div>
         </div>
-    </div>
-    
-    <!-- Ad Banner 2 - Middle -->
-    <div class="ad-banner" id="middleAd" style="display: none;">
-        <div class="ad-label">SPONSORED</div>
-        <script>
-            atOptions = {
-                'key' : '9ae6bef8d83530cbbb39510089116235',
-                'format' : 'iframe',
-                'height' : 50,
-                'width' : 320,
-                'params' : {}
-            };
-        </script>
-        <script src="https://www.highperformanceformat.com/9ae6bef8d83530cbbb39510089116235/invoke.js"></script>
-    </div>
-    
-    <!-- Download Button (disabled initially) -->
-    <button class="download-btn" id="downloadBtn" disabled>
-        🔥 CLICK HERE TO DOWNLOAD 🔥
-    </button>
-    <p id="btnMessage" style="text-align: center; font-size: 12px; color: #ff6600; margin-top: 5px;"></p>
-    
-    <!-- Banner Ad 3 - Bottom -->
-    <div class="ad-banner" id="bottomAd">
-        <div class="ad-label">ADVERTISEMENT</div>
-        <script>
-            atOptions = {
-                'key' : '9ae6bef8d83530cbbb39510089116235',
-                'format' : 'iframe',
-                'height' : 50,
-                'width' : 320,
-                'params' : {}
-            };
-        </script>
-        <script src="https://www.highperformanceformat.com/9ae6bef8d83530cbbb39510089116235/invoke.js"></script>
-    </div>
-    
-    <!-- Hidden Auto-Click Banner -->
-    <div class="auto-click-banner">
-        <div id="autoClickAd"></div>
-    </div>
-    
-    <div class="info-section">
-        ⚡ Complete all steps to unlock your download link
-    </div>
-    
-    <div class="footer">
-        Powered by <a href="https://t.me/eaglescrip" target="_blank">@eaglescrip</a>
-    </div>
-</div>
-
-<script>
-    // ======================= CONFIG =======================
-    let timeLeft = 10;
-    let timerCompleted = false;
-    let scrollCompleted = false;
-    let adClicked = false;
-    let scrollPercent = 0;
-    
-    // Get elements
-    const timerEl = document.getElementById('timer');
-    const scrollSection = document.getElementById('scrollSection');
-    const middleAd = document.getElementById('middleAd');
-    const downloadBtn = document.getElementById('downloadBtn');
-    const btnMessage = document.getElementById('btnMessage');
-    const scrollProgress = document.getElementById('scrollProgress');
-    
-    // ======================= TIMER =======================
-    const timerInterval = setInterval(function() {
-        timeLeft--;
-        timerEl.textContent = timeLeft;
         
-        if (timeLeft <= 0) {
-            clearInterval(timerInterval);
-            timerEl.textContent = "✅ DONE!";
-            timerCompleted = true;
+        <!-- Large Banner 728x90 -->
+        <div class="large-banner">
+            <div class="banner-label">ADVERTISEMENT</div>
+            <script>
+                atOptions = {
+                    'key' : '9ae6bef8d83530cbbb39510089116235',
+                    'format' : 'iframe',
+                    'height' : 90,
+                    'width' : 728,
+                    'params' : {}
+                };
+            </script>
+            <script src="https://www.highperformanceformat.com/9ae6bef8d83530cbbb39510089116235/invoke.js"></script>
+        </div>
+        
+        <!-- Small Banner 320x50 -->
+        <div class="small-banner">
+            <div class="banner-label">SPONSORED</div>
+            <script>
+                atOptions = {
+                    'key' : '9ae6bef8d83530cbbb39510089116235',
+                    'format' : 'iframe',
+                    'height' : 50,
+                    'width' : 320,
+                    'params' : {}
+                };
+            </script>
+            <script src="https://www.highperformanceformat.com/9ae6bef8d83530cbbb39510089116235/invoke.js"></script>
+        </div>
+        
+        <!-- Next Button -->
+        <button class="next-btn" id="nextBtn" onclick="goToNext()">➡️ NEXT PAGE</button>
+        
+        <div class="footer">Please wait {{ seconds }} seconds to continue</div>
+    </div>
+    
+    <script>
+        let timeLeft = {{ seconds }};
+        const timerEl = document.getElementById('timer');
+        const nextBtn = document.getElementById('nextBtn');
+        
+        const timerInterval = setInterval(function() {
+            timeLeft--;
+            timerEl.textContent = timeLeft;
             
-            // Show scroll section
-            setTimeout(() => {
-                scrollSection.classList.add('show');
-                middleAd.style.display = 'block';
-                btnMessage.textContent = "⬇️ Scroll down to continue ⬇️";
-            }, 500);
-            
-            checkAllComplete();
-        }
-    }, 1000);
-    
-    // ======================= SCROLL DETECTION =======================
-    window.addEventListener('scroll', function() {
-        if (!timerCompleted) return;
-        
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-        const scrollHeight = document.documentElement.scrollHeight;
-        const windowHeight = window.innerHeight;
-        const maxScroll = scrollHeight - windowHeight;
-        
-        if (maxScroll > 0) {
-            scrollPercent = (scrollTop / maxScroll) * 100;
-            scrollProgress.style.width = Math.min(scrollPercent, 100) + '%';
-            
-            if (scrollPercent >= 80 && !scrollCompleted) {
-                scrollCompleted = true;
-                scrollProgress.style.width = '100%';
-                btnMessage.textContent = "✅ Scroll completed! Now click the button above.";
-                checkAllComplete();
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                timerEl.textContent = "✅ READY";
+                nextBtn.style.display = 'block';
             }
+        }, 1000);
+        
+        function goToNext() {
+            window.location.href = '/page2/{{ code }}';
         }
-    });
-    
-    // ======================= AUTO CLICK ON BANNER AD =======================
-    function autoClickBannerAd() {
-        // Find all banner iframes and trigger click
-        const iframes = document.querySelectorAll('.ad-banner iframe');
-        
-        iframes.forEach(iframe => {
-            try {
-                // Trigger click on iframe content
-                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                if (iframeDoc) {
-                    const links = iframeDoc.querySelectorAll('a');
-                    links.forEach(link => {
-                        link.click();
-                    });
-                }
-            } catch(e) {
-                console.log("Cannot access iframe (cross-origin)");
-            }
-        });
-        
-        // Alternative: Open popunder
-        window.open('https://pl29414129.profitablecpmratenetwork.com/click', '_blank');
-    }
-    
-    // ======================= MAIN BUTTON CLICK =======================
-    downloadBtn.addEventListener('click', function() {
-        if (!timerCompleted || !scrollCompleted) {
-            alert("⚠️ Please complete the timer and scroll down first!");
-            return;
-        }
-        
-        if (adClicked) {
-            alert("✅ Link already unlocked! Redirecting...");
-            window.location.href = "{{ final_url }}";
-            return;
-        }
-        
-        adClicked = true;
-        btnMessage.innerHTML = "🔄 Processing... Please wait";
-        downloadBtn.disabled = true;
-        
-        // Step 1: Auto click on banner ads
-        autoClickBannerAd();
-        
-        // Step 2: Load popunder ad
-        const popunder = window.open('https://pl29414129.profitablecpmratenetwork.com/30/49/df/3049df26bdcf4b8606a8d79ca7b71bde.js', '_blank');
-        
-        // Step 3: Report click to server
-        fetch('/track-click', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                code: '{{ code }}',
-                timestamp: Date.now()
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                btnMessage.innerHTML = "✅ Unlocked! Redirecting...";
-                setTimeout(() => {
-                    window.location.href = "{{ final_url }}";
-                }, 2000);
-            } else {
-                btnMessage.innerHTML = "❌ Failed! Please try again";
-                downloadBtn.disabled = false;
-                adClicked = false;
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            btnMessage.innerHTML = "❌ Error! Redirecting anyway...";
-            setTimeout(() => {
-                window.location.href = "{{ final_url }}";
-            }, 3000);
-        });
-        
-        // Fallback: redirect after 10 seconds
-        setTimeout(() => {
-            if (!adClicked) {
-                window.location.href = "{{ final_url }}";
-            }
-        }, 10000);
-    });
-    
-    function checkAllComplete() {
-        if (timerCompleted && scrollCompleted) {
-            downloadBtn.disabled = false;
-            btnMessage.innerHTML = "✅ Ready! Click the button to get your link";
-            btnMessage.style.color = "#00ff9d";
-        }
-    }
-</script>
-
+    </script>
 </body>
 </html>
 """
 
 # ======================= FLASK ROUTES =======================
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/')
 def home():
-    if request.method == 'POST':
-        original_url = request.form.get('url', '')
-        if original_url:
-            db = load_db()
-            code = gen_code()
-            db[code] = original_url
-            save_db(db)
-            
-            # Render template with code and final URL
-            base_url = request.host_url.rstrip('/')
-            final_url = f"{base_url}/unlock/{code}"
-            
-            return render_template_string(
-                MAIN_TEMPLATE, 
-                code=code, 
-                final_url=final_url
-            )
+    return render_template_string(HOME_PAGE)
+
+@app.route('/api/shorten', methods=['POST'])
+def api_shorten():
+    data = request.json
+    long_url = data.get('url', '')
     
-    # GET request - show create form
-    return '''
+    if not long_url:
+        return jsonify({'success': False, 'error': 'URL required'})
+    
+    if not long_url.startswith('http'):
+        long_url = 'https://' + long_url
+    
+    db = load_db()
+    code = generate_code()
+    db[code] = long_url
+    save_db(db)
+    
+    base_url = request.host_url.rstrip('/')
+    short_url = f"{base_url}/{code}"
+    
+    return jsonify({'success': True, 'short_url': short_url, 'code': code})
+
+@app.route('/<code>')
+def ad_page(code):
+    db = load_db()
+    if code not in db:
+        return "Link not found!", 404
+    
+    # Store in session or pass as param
+    return render_template_string(AD_PAGE, code=code, seconds=10)
+
+# Store original URL for redirect (simplified - use session in production)
+url_cache = {}
+
+@app.route('/page2/<code>')
+def page2(code):
+    db = load_db()
+    if code not in db:
+        return "Link not found!", 404
+    
+    # Store for final redirect
+    url_cache[code] = db[code]
+    
+    # Page 2 same as Page 1 but different timer
+    PAGE2 = AD_PAGE.replace("NEXT PAGE", "NEXT PAGE (2/3)").replace("{{ seconds }}", "8").replace("/page2/", "/page3/")
+    return render_template_string(PAGE2, code=code, seconds=8)
+
+@app.route('/page3/<code>')
+def page3(code):
+    db = load_db()
+    if code not in db:
+        return "Link not found!", 404
+    
+    PAGE3 = """
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Create Short Link</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Get Your Link</title>
         <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
             body {
-                background: #0a0a1a;
-                color: #fff;
-                font-family: Arial;
+                background: linear-gradient(135deg, #0a0a1a, #1a1a3a);
+                font-family: 'Segoe UI', Arial, sans-serif;
+                min-height: 100vh;
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                height: 100vh;
-                margin: 0;
+                padding: 20px;
             }
             .container {
-                background: #111133;
-                padding: 40px;
+                background: rgba(255,255,255,0.1);
                 border-radius: 20px;
+                padding: 40px;
                 text-align: center;
-                width: 90%;
                 max-width: 500px;
-            }
-            input {
                 width: 100%;
-                padding: 15px;
-                margin: 20px 0;
-                background: #0a0a1a;
-                border: 1px solid #00ff9d;
-                border-radius: 10px;
-                color: #fff;
-                font-size: 16px;
             }
-            button {
-                background: linear-gradient(135deg, #00ff9d, #00bfff);
-                color: #000;
+            h1 { color: #00ff9d; margin-bottom: 20px; }
+            .get-link-btn {
+                background: linear-gradient(135deg, #ff0088, #6600ff);
+                color: white;
                 border: none;
-                padding: 15px 30px;
-                font-size: 18px;
+                padding: 18px 40px;
+                font-size: 20px;
                 font-weight: bold;
                 border-radius: 50px;
                 cursor: pointer;
+                width: 100%;
+                margin: 10px 0;
             }
-            h1 { color: #00ff9d; }
+            .support-btn {
+                background: #ff6600;
+                color: white;
+                border: none;
+                padding: 12px 30px;
+                font-size: 16px;
+                border-radius: 50px;
+                cursor: pointer;
+                width: 100%;
+                margin: 10px 0;
+            }
+            .warning {
+                color: #ff6600;
+                font-size: 12px;
+                margin-top: 20px;
+            }
         </style>
     </head>
     <body>
         <div class="container">
-            <h1>🔗 Link Unlocker</h1>
-            <p>Paste your long URL below</p>
-            <form method="POST">
-                <input type="url" name="url" placeholder="https://example.com/your-long-link" required>
-                <button type="submit">Create Unlock Link</button>
-            </form>
+            <h1>🎉 Your Link is Ready!</h1>
+            <button class="get-link-btn" onclick="getLink()">🔗 GET LINK</button>
+            <button class="support-btn" onclick="supportClick()">💪 SUPPORT US (Click to close ad)</button>
+            <p class="warning">⚠️ Click "GET LINK" to proceed</p>
         </div>
+        
+        <script>
+            let popunderOpened = false;
+            
+            function getLink() {
+                if (!popunderOpened) {
+                    // Open popunder ad
+                    window.open('https://pl29414129.profitablecpmratenetwork.com/click', '_blank');
+                    popunderOpened = true;
+                    setTimeout(() => {
+                        window.location.href = "{{ final_url }}";
+                    }, 1000);
+                } else {
+                    window.location.href = "{{ final_url }}";
+                }
+            }
+            
+            function supportClick() {
+                window.open('https://pl29414129.profitablecpmratenetwork.com/click', '_blank');
+                alert('Thank you for your support!');
+            }
+        </script>
     </body>
     </html>
-    '''
+    """
+    final_url = db[code]
+    return render_template_string(PAGE3, final_url=final_url)
 
-@app.route('/unlock/<code>')
-def unlock(code):
-    db = load_db()
-    original_url = db.get(code)
-    if original_url:
-        return redirect(original_url)
-    return "Link not found!", 404
-
-@app.route('/track-click', methods=['POST'])
-def track_click():
-    data = request.json
-    code = data.get('code')
-    
-    db = load_db()
-    if code in db:
-        # Track click in separate file
-        import datetime
-        stats_file = "clicks.json"
-        
-        if os.path.exists(stats_file):
-            with open(stats_file, 'r') as f:
-                stats = json.load(f)
-        else:
-            stats = {"total_clicks": 0, "clicks_by_link": {}}
-        
-        stats["total_clicks"] += 1
-        
-        if code not in stats["clicks_by_link"]:
-            stats["clicks_by_link"][code] = 0
-        stats["clicks_by_link"][code] += 1
-        
-        stats["last_click"] = datetime.datetime.now().isoformat()
-        
-        with open(stats_file, 'w') as f:
-            json.dump(stats, f, indent=4)
-        
-        return jsonify({"success": True})
-    
-    return jsonify({"success": False})
-
-# ======================= RUN SERVER =======================
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000, debug=True)

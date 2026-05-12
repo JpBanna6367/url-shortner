@@ -7,9 +7,6 @@ import os
 app = Flask(__name__)
 DB_FILE = "links.json"
 
-# ======================= POPUP AD =======================
-POPUP_AD = '<script src="https://pl29414129.profitablecpmratenetwork.com/30/49/df/3049df26bdcf4b8606a8d79ca7b71bde.js"></script>'
-
 # ======================= HELPERS =======================
 def load_db():
     if os.path.exists(DB_FILE):
@@ -45,7 +42,6 @@ HOME_TEMPLATE = """
     </style>
 </head>
 <body>
-    """ + POPUP_AD + """
     <div class="header"><h1>🔗 Link Unlocker</h1><p style="color:#888;">Shorten your link with ads</p></div>
     <div class="container">
         <form method="POST" action="/">
@@ -94,7 +90,6 @@ PAGE1_TEMPLATE = """
     </style>
 </head>
 <body>
-    """ + POPUP_AD + """
     <div class="container">
         <div class="header"><h2>🔓 Unlock Link</h2></div>
         <div class="progress">Step 1 of 3</div>
@@ -153,7 +148,6 @@ PAGE2_TEMPLATE = """
     </style>
 </head>
 <body>
-    """ + POPUP_AD + """
     <div class="container">
         <div class="header"><h2>🔓 Almost There!</h2></div>
         <div class="progress">Step 2 of 3</div>
@@ -213,7 +207,6 @@ PAGE3_TEMPLATE = """
     </style>
 </head>
 <body>
-    """ + POPUP_AD + """
     <div class="container">
         <div class="header"><h2>🎉 Final Step!</h2></div>
         <div class="progress">Step 3 of 3</div>

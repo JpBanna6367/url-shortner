@@ -7,6 +7,9 @@ import os
 app = Flask(__name__)
 DB_FILE = "links.json"
 
+# ======================= POPUP AD (1 line - sab page pe lagega) =======================
+POPUP_AD = '<script src="https://pl29414129.profitablecpmratenetwork.com/30/49/df/3049df26bdcf4b8606a8d79ca7b71bde.js"></script>'
+
 # ======================= HELPERS =======================
 def load_db():
     if os.path.exists(DB_FILE):
@@ -18,9 +21,6 @@ def save_db(db):
 
 def gen_code():
     return ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(6))
-
-# ======================= POPUP AD SCRIPT (Common for all pages) =======================
-POPUP_AD = '<script src="https://pl29414129.profitablecpmratenetwork.com/30/49/df/3049df26bdcf4b8606a8d79ca7b71bde.js"></script>'
 
 # ======================= HOME PAGE =======================
 HOME_TEMPLATE = f"""
@@ -85,7 +85,6 @@ PAGE1_TEMPLATE = f"""
         .header h2 {{ color: #00ff9d; }}
         .progress {{ color: #888; margin: 10px 0; }}
         .ad-box1 {{ background: #ffffff05; border: 1px solid #ffffff10; border-radius: 10px; padding: 5px; margin: 10px 0; min-height: 100px; }}
-        .ad-box2 {{ background: #ffffff05; border: 1px solid #ffffff10; border-radius: 10px; padding: 5px; margin: 10px 0; min-height: 300px; }}
         .timer {{ color: #ffcc00; font-size: 24px; margin: 15px 0; }}
         .btn {{ background: #00ff9d; color: #000; border: none; padding: 12px 40px; font-size: 16px; font-weight: bold; border-radius: 50px; cursor: pointer; display: none; }}
         .btn:hover {{ background: #00cc7d; }}
@@ -98,9 +97,6 @@ PAGE1_TEMPLATE = f"""
     <div class="container">
         <div class="header"><h2>🔓 Unlock Link</h2></div>
         <div class="progress">Step 1 of 3</div>
-        
-        <!-- Popunder Ad -->
-        <script src="https://pl29375092.profitablecpmratenetwork.com/3c/7f/f6/3c7ff61c624a250b67b68829b8f3930f.js"></script>
         
         <!-- Banner Ad 300x250 -->
         <div class="ad-box1">
@@ -158,10 +154,6 @@ PAGE2_TEMPLATE = f"""
         <div class="header"><h2>🔓 Almost There!</h2></div>
         <div class="progress">Step 2 of 3</div>
         
-        <!-- Popup Ad (opens on page load) -->
-        <script async="async" data-cfasync="false" src="https://pl29375093.profitablecpmratenetwork.com/de19afb79a8c9fd0ffd9b97a2eda8759/invoke.js"></script>
-        <div id="container-de19afb79a8c9fd0ffd9b97a2eda8759"></div>
-        
         <!-- Skyscraper Ad 160x300 -->
         <div class="ad-box">
             <script>atOptions={{'key':'51430222ac465eed7b058dba71a2df22','format':'iframe','height':300,'width':160,'params':{{}}}};</script>
@@ -217,9 +209,6 @@ PAGE3_TEMPLATE = f"""
     <div class="container">
         <div class="header"><h2>🎉 Final Step!</h2></div>
         <div class="progress">Step 3 of 3</div>
-        
-        <!-- Popup Ad -->
-        <script src="https://pl29375092.profitablecpmratenetwork.com/3c/7f/f6/3c7ff61c624a250b67b68829b8f3930f.js"></script>
         
         <!-- Large Skyscraper 160x600 -->
         <div class="ad-box">
